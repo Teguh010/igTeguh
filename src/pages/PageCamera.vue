@@ -120,6 +120,7 @@ export default {
       })
     },
     captureImage() {
+      // this.$cameraCapture()
       let video = this.$refs.video
       let canvas = this.$refs.canvas
       canvas.width = video.getBoundingClientRect().width

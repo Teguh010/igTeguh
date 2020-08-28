@@ -11,7 +11,7 @@
       >
         <div class="constrain">
           <q-banner
-            class="bg-grey-3 q-mb-md"
+            class="bg-blue-3 q-mb-md"
           >
             <template v-slot:avatar>
               <q-icon name="eva-bell-outline" color="primary" />
@@ -70,12 +70,12 @@
             <q-item>
               <q-item-section avatar>
                 <q-avatar>
-                  <img src="https://s.gravatar.com/avatar/ce7f3697e231df38b3ca6065848520da?s=80">
+                   <img src="../statics/udin.jpeg">
                 </q-avatar>
               </q-item-section>
 
               <q-item-section>
-                <q-item-label class="text-bold">danny__connell</q-item-label></q-item-label>
+                <q-item-label class="text-bold">Madinah Badrusalam</q-item-label></q-item-label>
                 <q-item-label caption>
                   {{ post.location }}
                 </q-item-label>
@@ -129,14 +129,14 @@
         <q-item class="fixed">
           <q-item-section avatar>
             <q-avatar size="48px">
-              <img src="https://s.gravatar.com/avatar/ce7f3697e231df38b3ca6065848520da?s=80">
+              <img src="../statics/udin.jpeg">
             </q-avatar>
           </q-item-section>
 
           <q-item-section>
-            <q-item-label class="text-bold">danny__connell</q-item-label></q-item-label>
+            <q-item-label class="text-bold">Madinah Badrusalam</q-item-label></q-item-label>
             <q-item-label caption>
-              Danny Connell
+              Madinah Badrusalam
             </q-item-label>
           </q-item-section>
         </q-item>
