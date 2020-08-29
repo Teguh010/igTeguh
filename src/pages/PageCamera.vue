@@ -99,6 +99,7 @@ export default {
       locationLoading: false
     }
   },
+  
   computed: {
     locationSupported() {
       if ('geolocation' in navigator) return true

@@ -1,366 +1,283 @@
 <template>
-  <q-page class="constrain q-pa-md">
-    <transition
-      appear
-      enter-active-class="animated fadeIn"
-      leave-active-class="animated fadeOut"
-    >
-      <div
-        v-if="showNotificationsBanner && pushNotificationsSupported"
-        class="banner-container bg-primary"
+  <q-page class="constrain-more q-pa-md">
+    <div class="camera-frame q-pa-md">
+      <video 
+        v-show="!imageCaptured"
+        ref="video"
+        class="full-width"
+        autoplay
+      />
+      <canvas
+        v-show="imageCaptured"
+        ref="canvas"
+        class="full-width"
+        height="240"
+      />
+    </div>
+    <div class="text-center q-pa-md">
+      <q-btn
+        v-if="hasCameraSupport"
+        @click="captureImage"
+        :disable="imageCaptured"
+        color="grey-10"
+        icon="eva-camera"
+        size="lg"
+        round
+      />
+      <q-file
+        v-else
+        v-model="imageUpload"
+        @input="captureImageFallback"
+        label="Choose an image"
+        accept="image/*"
+        outlined
       >
-        <div class="constrain">
-          <q-banner
-            class="bg-blue-3 q-mb-md"
-          >
-            <template v-slot:avatar>
-              <q-icon name="eva-bell-outline" color="primary" />
-            </template>
-
-            Would you like to enable notifications?
-
-            <template v-slot:action>
-              <q-btn
-                @click="enableNotifications"
-                label="Yes"
-                color="primary"
-                class="q-px-sm"
-                dense
-                flat
-              />
-              <q-btn
-                @click="showNotificationsBanner = false"
-                label="Later"
-                color="primary"
-                class="q-px-sm"
-                dense
-                flat
-              />
-              <q-btn
-                @click="neverShowNotificationsBanner"
-                label="Never"
-                color="primary"
-                class="q-px-sm"
-                dense
-                flat
-              />
-            </template>
-          </q-banner>
-        </div>
+        <template v-slot:prepend>
+          <q-icon name="eva-attach-outline" />
+        </template>
+      </q-file>
+      <div class="row justify-center q-ma-md">
+        <q-input
+          v-model="post.caption"
+          class="col col-sm-6"
+          label="Caption *"
+          dense
+        />
       </div>
-    </transition>
-    <div class="row q-col-gutter-lg">
-      <div class="col-12 col-sm-8">
-        <template v-if="!loadingPosts && posts.length">
-          <q-card
-            v-for="post in posts"
-            :key="post.id"
-            class="card-post q-mb-md"
-            :class="{ 'bg-red-1' : post.offline }"
-            bordered
-            flat
-          >
-            <q-badge
-              v-if="post.offline"
-              class="badge-offline absolute-top-right"
-              color="red"
-            >
-              Stored offline
-            </q-badge>
-            <q-item>
-              <q-item-section avatar>
-                <q-avatar>
-                   <img src="../statics/udin.jpeg">
-                </q-avatar>
-              </q-item-section>
-
-              <q-item-section>
-                <q-item-label class="text-bold">Madinah Badrusalam</q-item-label></q-item-label>
-                <q-item-label caption>
-                  {{ post.location }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-separator />
-
-            <q-img
-              :src="post.imageUrl"
+      <div class="row justify-center q-ma-md">
+        <q-input
+          v-model="post.location"
+          :loading="locationLoading"
+          class="col col-sm-6"
+          label="Location"
+          dense
+        >
+          <template v-slot:append>
+            <q-btn
+              v-if="!locationLoading && locationSupported"
+              @click="getLocation"
+              icon="eva-navigation-2-outline"
+              dense
+              flat
+              round
             />
-
-            <q-card-section>
-              <div>{{ post.caption }}</div>
-              <div class="text-caption text-grey">{{ post.date | niceDate }}</div>
-            </q-card-section>
-
-          </q-card>
-        </template>
-        <template v-else-if="!loadingPosts && !posts.length">
-          <h5 class="text-center text-grey">No posts yet.</h5>
-        </template>
-        <template v-else>
-          <q-card flat bordered>
-            <q-item>
-              <q-item-section avatar>
-                <q-skeleton type="QAvatar" animation="fade" size="40px" />
-              </q-item-section>
-
-              <q-item-section>
-                <q-item-label>
-                  <q-skeleton type="text" animation="fade" />
-                </q-item-label>
-                <q-item-label caption>
-                  <q-skeleton type="text" animation="fade" />
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-skeleton height="200px" square animation="fade" />
-
-            <q-card-section>
-              <q-skeleton type="text" class="text-subtitle2" animation="fade" />
-              <q-skeleton type="text" width="50%" class="text-subtitle2" animation="fade" />
-            </q-card-section>
-          </q-card>
-        </template>
+          </template>
+        </q-input>
       </div>
-
-      <div class="col-4 large-screen-only">
-        <q-item class="fixed">
-          <q-item-section avatar>
-            <q-avatar size="48px">
-              <img src="../statics/udin.jpeg">
-            </q-avatar>
-          </q-item-section>
-
-          <q-item-section>
-            <q-item-label class="text-bold">Madinah Badrusalam</q-item-label></q-item-label>
-            <q-item-label caption>
-              Madinah Badrusalam
-            </q-item-label>
-          </q-item-section>
-        </q-item>
+      <div class="row justify-center q-mt-lg">
+        <q-btn
+          @click="addPost()"
+          :disable="!post.caption || !post.photo"
+          color="primary"
+          label="Post Image"
+          rounded
+          unelevated
+        />
       </div>
     </div>
-
   </q-page>
 </template>
 
 <script>
-import { date } from 'quasar'
-import { openDB } from 'idb'
-let qs = require('qs')
+import { uid } from 'quasar'
+require('md-gum-polyfill')
 
 export default {
-  name: 'PageHome',
+  name: 'PageCamera',
   data() {
     return {
-      posts: [],
-      loadingPosts: false,
-      showNotificationsBanner: false
+      post: {
+        id: uid(),
+        caption: '',
+        location: '',
+        photo: null,
+        date: Date.now()
+      },
+      imageCaptured: false,
+      imageUpload: [],
+      hasCameraSupport: true,
+      locationLoading: false
     }
   },
   computed: {
-    serviceWorkerSupported() {
-      if ('serviceWorker' in navigator) return true
+    locationSupported() {
+      if ('geolocation' in navigator) return true
       return false
     },
-    pushNotificationsSupported() {
-      if ('PushManager' in window) return true
+    backgroundSyncSupported() {
+      if ('serviceWorker' in navigator && 'SyncManager' in window) return true
       return false
     }
   },
   methods: {
-    getPosts() {
-      this.loadingPosts = true
+    initCamera() {
+      navigator.mediaDevices.getUserMedia({
+        video: true
+      }).then(stream => {
+        this.$refs.video.srcObject = stream
+      }).catch(error => {
+        this.hasCameraSupport = false
+      })
+    },
+    captureImage() {
+      let video = this.$refs.video
+      let canvas = this.$refs.canvas
+      canvas.width = video.getBoundingClientRect().width
+      canvas.height = video.getBoundingClientRect().height
+      let context = canvas.getContext('2d')
+      context.drawImage(video, 0, 0, canvas.width, canvas.height)
+      this.imageCaptured = true
+      this.post.photo = this.dataURItoBlob(canvas.toDataURL())
+      this.disableCamera()
+    },
+    captureImageFallback(file) {
+      this.post.photo = file
 
-      // add a unique timestamp to the request URL for IE so that requests don't get cached
-      let timestamp = ''
-      if (this.$q.platform.is.ie) {
-        timestamp = '?timestamp=' + Date.now()
-      }
+      let canvas = this.$refs.canvas
+      let context = canvas.getContext('2d')
 
-      this.$axios.get(`${ process.env.API }/posts${ timestamp }`).then(response => {
-        this.posts = response.data
-        this.loadingPosts = false
-        if (!navigator.onLine) {
-          this.getOfflinePosts()
+      var reader = new FileReader()
+      reader.onload = event => {
+        var img = new Image()
+        img.onload = () => {
+          canvas.width = img.width
+          canvas.height = img.height
+          context.drawImage(img,0,0)
+          this.imageCaptured = true
         }
-      }).catch(err => {
-        this.$q.dialog({
-          title: 'Error',
-          message: 'Could not download posts.'
-        })
-        this.loadingPosts = false
+        img.src = event.target.result
+      }
+      reader.readAsDataURL(file)
+    },
+    disableCamera() {
+      this.$refs.video.srcObject.getVideoTracks().forEach(track => {
+        track.stop()
       })
     },
-    getOfflinePosts() {
-      let db = openDB('workbox-background-sync').then(db => {
-        db.getAll('requests').then(failedRequests => {
-          failedRequests.forEach(failedRequest => {
-            if (failedRequest.queueName == 'createPostQueue') {
-              let request = new Request(failedRequest.requestData.url, failedRequest.requestData)
-              request.formData().then(formData => {
-                let offlinePost = {}
-                offlinePost.id = formData.get('id')
-                offlinePost.caption = formData.get('caption')
-                offlinePost.location = formData.get('location')
-                offlinePost.date = parseInt(formData.get('date'))
-                offlinePost.offline = true
+    dataURItoBlob(dataURI) {
+      // convert base64 to raw binary data held in a string
+      // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
+      var byteString = atob(dataURI.split(',')[1]);
 
-                let reader = new FileReader()
-                reader.readAsDataURL(formData.get('file'))
-                reader.onloadend = () => {
-                  offlinePost.imageUrl = reader.result
-                  this.posts.unshift(offlinePost)
-                }
-              })
-            }
-          })
-        }).catch(err => {
-          console.log('Error accessing IndexedDB: ', err)
-        })
-      })
-    },
-    listenForOfflinePostUploaded() {
-      if (this.serviceWorkerSupported) {
-        const channel = new BroadcastChannel('sw-messages');
-        channel.addEventListener('message', event => {
-          console.log('Received', event.data);
-          if (event.data.msg == 'offline-post-uploaded') {
-            let offlinePostCount = this.posts.filter(post => post.offline == true).length
-            this.posts[offlinePostCount - 1].offline = false
-          }
-        });
-      }
-    },
-    initNotificationsBanner() {
-      let neverShowNotificationsBanner = this.$q.localStorage.getItem('neverShowNotificationsBanner')
+      // separate out the mime component
+      var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
 
-      if (!neverShowNotificationsBanner) {
-        this.showNotificationsBanner = true   
+      // write the bytes of the string to an ArrayBuffer
+      var ab = new ArrayBuffer(byteString.length);
+
+      // create a view into the buffer
+      var ia = new Uint8Array(ab);
+
+      // set the bytes of the buffer to the correct values
+      for (var i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
       }
+
+      // write the ArrayBuffer to a blob, and you're done
+      var blob = new Blob([ab], {type: mimeString});
+      return blob;
+
     },
-    enableNotifications() {
-      if (this.pushNotificationsSupported) {
-        Notification.requestPermission(result => {
-          console.log('result: ', result)
-          this.neverShowNotificationsBanner()
-          if (result == 'granted') {
-            // this.displayGrantedNotification()
-            this.checkForExistingPushSubscription()
-          }
-        })
-      }
+    getLocation() {
+      this.locationLoading = true
+      navigator.geolocation.getCurrentPosition(position => {
+        this.getCityAndCountry(position)
+      }, err => {
+        this.locationError()
+      }, { timeout: 7000 })
     },
-    checkForExistingPushSubscription() {
-      if (this.serviceWorkerSupported && this.pushNotificationsSupported) {
-        let reg
-        navigator.serviceWorker.ready.then(swreg => {
-          reg = swreg
-          return swreg.pushManager.getSubscription()
-        }).then(sub => {
-          if (!sub) {
-            this.createPushSubscription(reg)
-          }
-        })
-      }
-    },
-    createPushSubscription(reg) {
-      let vapidPublicKey = 'BLEwTIax2rmCgt3XN3aGDGb32S8TVNdJ-KRLhB1rEMcOhpcjIhj6ffJSscutuXJ6wmflJkySY-5MEOl8TGpVCbo'
-      let vapidPublicKeyConverted = this.urlBase64ToUint8Array(vapidPublicKey)
-      reg.pushManager.subscribe({
-        applicationServerKey: vapidPublicKeyConverted,
-        userVisibleOnly: true
-      }).then(newSub => {
-        let newSubData = newSub.toJSON(),
-            newSubDataQS = qs.stringify(newSubData)
-        return this.$axios.post(`${ process.env.API }/createSubscription?${ newSubDataQS }`)
-      }).then(response => {
-        this.displayGrantedNotification()
+    getCityAndCountry(position) {
+      let apiUrl = `https://geocode.xyz/${ position.coords.latitude },${ position.coords.longitude }?json=1`
+      this.$axios.get(apiUrl).then(result => {
+        this.locationSuccess(result)
       }).catch(err => {
-        console.log('err: ', err)
+        this.locationError()
       })
     },
-    displayGrantedNotification() {
-      // new Notification("You're subscribed to notifications!", {
-      //   body: 'Thanks for subscribing!',
-      //   icon: 'icons/icon-128x128.png',
-      //   image: 'icons/icon-128x128.png',
-      //   badge: 'icons/icon-128x128.png',
-      //   dir: 'ltr',
-      //   lang: 'en-US',
-      //   vibrate: [100, 50, 200],
-      //   tag: 'confirm-notification',
-      //   renotify: true
-      // })
-      if (this.serviceWorkerSupported && this.pushNotificationsSupported) {
-        navigator.serviceWorker.ready.then(swreg => {
-          swreg.showNotification("You're subscribed to notifications!", {
-            body: 'Thanks for subscribing!',
-            icon: 'icons/icon-128x128.png',
-            image: 'icons/icon-128x128.png',
-            badge: 'icons/icon-128x128.png',
-            dir: 'ltr',
-            lang: 'en-US',
-            vibrate: [100, 50, 200],
-            tag: 'confirm-notification',
-            renotify: true,
+    locationSuccess(result) {
+      this.post.location = result.data.city
+      if (result.data.country) {
+        this.post.location += `, ${ result.data.country }`
+      }
+      this.locationLoading = false
+    },
+    locationError() {
+      let locationErrorMessage = 'Could not find your location.'
+      if (this.$q.platform.is.mac) {
+        locationErrorMessage += ' You might be able to fix this in System Preferences > Security & Privacy > Location Services'
+      }
+      this.$q.dialog({
+        title: 'Error',
+        message: locationErrorMessage
+      })
+      this.locationLoading = false
+    },
+    addPost() {
+      this.$q.loading.show()
+
+      let postCreated = this.$q.localStorage.getItem('postCreated')
+
+      if (this.$q.platform.is.android && !postCreated && !navigator.onLine) {
+        this.addPostError()
+        this.$q.loading.hide()
+      }
+      else {
+        let formData = new FormData()
+        formData.append('id', this.post.id)
+        formData.append('caption', this.post.caption)
+        formData.append('location', this.post.location)
+        formData.append('date', this.post.date)
+        formData.append('file', this.post.photo, this.post.id + '.png')
+
+        this.$axios.post(`${ process.env.API }/createPost`, formData).then(response => {
+          console.log('response: ', response)
+          this.$q.localStorage.set('postCreated', true)
+          this.$router.push('/')
+          this.$q.notify({
+            message: 'Post created!',
             actions: [
-              {
-                action: 'hello',
-                title: 'Hello',
-                icon: 'icons/icon-128x128.png'
-              },
-              {
-                action: 'goodbye',
-                title: 'Goodbye',
-                icon: 'icons/icon-128x128.png'
-              }
+              { label: 'Dismiss', color: 'white' }
             ]
           })
-        })
+          this.$q.loading.hide()
+          if (this.$q.platform.is.safari) {
+            setTimeout(() => {
+              window.location.href = '/'
+            }, 1000)
+          }
+        }).catch(err => {
+          console.log('err: ', err)
+          if (!navigator.onLine && this.backgroundSyncSupported && postCreated) {
+            this.$q.notify('Post created offline')
+            this.$router.push('/')
+          }
+          else {
+            this.addPostError()
+          }
+          this.$q.loading.hide()
+        }) 
       }
     },
-    neverShowNotificationsBanner() {
-      this.showNotificationsBanner = false
-      this.$q.localStorage.set('neverShowNotificationsBanner', true)
-    },
-    urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding)
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
+    addPostError() {
+      this.$q.dialog({
+        title: 'Error',
+        message: 'Sorry, could not create post!'
+      })
     }
   },
-  filters: {
-    niceDate(value) {
-      return date.formatDate(value, 'MMMM D h:mmA')
+  mounted() {
+    this.initCamera()
+  },
+  beforeDestroy() {
+    if (this.hasCameraSupport) {
+      this.disableCamera()
     }
-  },
-  activated() {
-    console.log('activated')
-    this.getPosts()
-  },
-  created() {
-    this.listenForOfflinePostUploaded()
-    this.initNotificationsBanner()
   }
 }
 </script>
 
 <style lang="sass">
-  .card-post
-    .badge-offline
-      border-top-left-radius: 0 !important
-    .q-img
-      min-height: 200px
+  .camera-frame
+    border: 2px solid $grey-10
+    border-radius: 10px
 </style>
